@@ -1,6 +1,9 @@
 import asyncio
 import json
 
+class CommunicationError(Exception):
+    pass
+
 class CmakeClientProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'
     _MSG_TAIL = b'\n]== "CMake Server" ==]\n'
@@ -10,6 +13,7 @@ class CmakeClientProtocol(asyncio.Protocol):
         self._outstanding_req = {}
         self._current_cookie = 0
         self._transport = None
+        self._is_closing = False
         self.src_dir = src_dir
         self.build_dir = build_dir
         self.generator = generator
@@ -20,10 +24,19 @@ class CmakeClientProtocol(asyncio.Protocol):
         asyncio.Protocol.connection_made(self, transport)
         self._transport = transport
         print('Connection made')
+        
     def connection_lost(self, exc):
         asyncio.Protocol.connection_lost(self, exc)
-        self.disconnected.set()
         print('Connection lost: {}'.format(exc))
+        
+        # Order here is important: prevent deadlocks
+        self._is_closing = True
+        for elm in self._outstanding_req:
+            # TODO: improve this diagnostic
+            elm[0].set_exception(CommunicationError('Connection lost'))
+        
+        self.disconnected.set()
+        
     def data_received(self, data):
         asyncio.Protocol.data_received(self, data)
         print('RX << {}'.format(data))
@@ -39,6 +52,10 @@ class CmakeClientProtocol(asyncio.Protocol):
         # Insert into outstanding request dict
         future = self._loop.create_future()
         self._outstanding_req[cookie] = (future, on_progress, on_message)
+        
+        # Safety check, to prevent deadlocks
+        if self._is_closing:
+            raise CommunicationError('Client is closing')
         
         # Actually send the data
         self._send(req)
@@ -56,7 +73,8 @@ class CmakeClientProtocol(asyncio.Protocol):
         }
         await self.request_reply(req)
         self.connected.set()
-        
+    
+    # TODO: remove this method
     def disconnect(self):
         self._transport.close()
         

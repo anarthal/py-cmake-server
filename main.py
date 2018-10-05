@@ -14,7 +14,14 @@ async def async_main(loop):
 
     await cli.configure()
     await cli.compute()
-    pprint.pprint(await cli.filesystem_watchers())
+    i = 0
+    while True:
+        i += 1
+        if i % 2:
+            pprint.pprint(await cli.filesystem_watchers())
+        else:
+            pprint.pprint(await cli.global_settings())
+        await asyncio.sleep(0.5, loop=loop)
     await cli.disconnect()
     
 def main():
