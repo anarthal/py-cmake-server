@@ -25,13 +25,13 @@ class CmakeClient(object):
     async def set_global_settings(self, args):
         msg = args.copy()
         msg['type'] = 'setGlobalSettings'
-        return await self._proto.request_reply(msg)
+        await self._proto.request_reply(msg)
     
     async def configure(self, on_progress=None, on_message=None):
-        return await self._proto.request_reply({'type': 'configure'}, on_progress, on_message)
+        await self._proto.request_reply({'type': 'configure'}, on_progress, on_message)
 
     async def compute(self, on_progress=None, on_message=None):
-        return await self._proto.request_reply({'type': 'compute'}, on_progress, on_message)
+        await self._proto.request_reply({'type': 'compute'}, on_progress, on_message)
 
     async def codemodel(self):
         return await self._proto.request_reply({'type': 'codemodel'})

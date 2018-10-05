@@ -20,7 +20,7 @@ async def async_main(loop):
 
     #await cli.configure(progress_cb, message_cb)
     #await cli.compute()
-    await cli.codemodel()
+    pprint.pprint(await cli.set_global_settings({'debugOutput': True}))
     await cli.disconnect()
     
 def main():
