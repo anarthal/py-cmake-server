@@ -28,6 +28,7 @@ class CmakeClient(object):
         msg['type'] = 'setGlobalSettings'
         await self._proto.request_reply(msg)
     
+    # TODO: support for cache arguments
     async def configure(self, on_progress=None, on_message=None):
         await self._proto.request_reply({'type': 'configure'}, on_progress, on_message)
 
@@ -45,4 +46,6 @@ class CmakeClient(object):
 
     async def filesystem_watchers(self):
         return await self._proto.request_reply({'type': 'fileSystemWatchers'})
+    
+    # TODO: support for ctestinfo
 
