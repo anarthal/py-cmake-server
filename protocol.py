@@ -1,11 +1,6 @@
 import asyncio
 import json
-
-class CommunicationError(Exception):
-    pass
-
-class ProtocolError(Exception):
-    pass
+from errors import ErrorReply, CommunicationError
 
 class CmakeClientProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'
@@ -110,7 +105,7 @@ class CmakeClientProtocol(asyncio.Protocol):
             future.set_result(msg)
         elif msg_type == 'error':
             future = self._outstanding_req.pop(msg['cookie'])[0]
-            future.set_exception(ProtocolError(msg['errorMessage']))
+            future.set_exception(ErrorReply(msg['errorMessage']))
         else:
             print('Warning: unknown message type: {}'.format(msg_type))    
         
