@@ -15,12 +15,13 @@ async def async_main(loop):
         '/tmp/pipe',
         '/home/ruben/workspace/cmakeserver/myproj',
         '/tmp/build',
-        'Unix Makefiles'
+        'Unix Makefiles',
+        lambda msg: pprint.pprint(msg)
     )
 
-    #await cli.configure(progress_cb, message_cb)
-    #await cli.compute()
-    pprint.pprint(await cli.set_global_settings({'debugOutput': True}))
+    await cli.configure(progress_cb, message_cb)
+    await cli.compute()
+    await asyncio.sleep(10.0)
     await cli.disconnect()
     
 def main():

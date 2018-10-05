@@ -5,7 +5,7 @@ from errors import ErrorReply, CommunicationError
 class CmakeClientProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'
     _MSG_TAIL = b'\n]== "CMake Server" ==]\n'
-    def __init__(self, loop, src_dir, build_dir, generator='Unix Makefiles'):
+    def __init__(self, loop, src_dir, build_dir, generator, on_signal=None):
         self._data = b''
         self._loop = loop
         self._outstanding_req = {}
@@ -15,6 +15,7 @@ class CmakeClientProtocol(asyncio.Protocol):
         self.src_dir = src_dir
         self.build_dir = build_dir
         self.generator = generator
+        self.on_signal = on_signal
         self.connected = asyncio.Event(loop=loop)
         self.disconnected = asyncio.Event(loop=loop)
         
@@ -92,8 +93,7 @@ class CmakeClientProtocol(asyncio.Protocol):
         if msg_type == 'hello':
             asyncio.ensure_future(self.connect(msg), loop=self._loop)
         elif msg_type == 'signal':
-            # TODO: proper handling here
-            print('Signal received: {}'.format(msg))
+            self._invoke(self.on_signal, msg)
         elif msg_type == 'progress':
             callback = self._outstanding_req[msg['cookie']][1]
             self._invoke(callback, msg)

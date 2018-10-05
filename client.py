@@ -2,14 +2,15 @@
 import protocol
 
 class CmakeClient(object):
-    def __init__(self, loop):
+    def __init__(self, loop, on_signal=None):
         self._loop = loop
         self._proto = None
         self._transport = None
   
-    async def connect(self, pipe, src_dir, build_dir, generator='Unix Makefiles'):
+    async def connect(self, pipe, src_dir, build_dir, generator='Unix Makefiles', on_signal=None):
         def protocol_factory():
-            return protocol.CmakeClientProtocol(self._loop, src_dir, build_dir, generator)
+            return protocol.CmakeClientProtocol(self._loop, src_dir,
+                                                build_dir, generator, on_signal)
         temp = await self._loop.create_unix_connection(protocol_factory, pipe)
         self._transport, self._proto = temp
         return await self._proto.connected.wait()
