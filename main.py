@@ -2,6 +2,12 @@
 import asyncio
 import client
 import pprint
+
+def message_cb(msg):
+    print('Received message: {}'.format(msg))
+    
+def progress_cb(msg):
+    print('Received progress: {}'.format(msg))
      
 async def async_main(loop):
     cli = client.CmakeClient(loop)
@@ -12,16 +18,9 @@ async def async_main(loop):
         'Unix Makefiles'
     )
 
-    await cli.configure()
-    await cli.compute()
-    i = 0
-    while True:
-        i += 1
-        if i % 2:
-            pprint.pprint(await cli.filesystem_watchers())
-        else:
-            pprint.pprint(await cli.global_settings())
-        await asyncio.sleep(0.5, loop=loop)
+    #await cli.configure(progress_cb, message_cb)
+    #await cli.compute()
+    await cli.codemodel()
     await cli.disconnect()
     
 def main():

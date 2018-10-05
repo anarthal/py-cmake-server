@@ -4,6 +4,9 @@ import json
 class CommunicationError(Exception):
     pass
 
+class ProtocolError(Exception):
+    pass
+
 class CmakeClientProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'
     _MSG_TAIL = b'\n]== "CMake Server" ==]\n'
@@ -73,15 +76,12 @@ class CmakeClientProtocol(asyncio.Protocol):
         }
         await self.request_reply(req)
         self.connected.set()
-    
-    # TODO: remove this method
-    def disconnect(self):
-        self._transport.close()
         
     def _send(self, msg):
         tx = self.encode(msg)
         print('TX >> {}'.format(tx))
         self._transport.write(tx)
+        
     def _process_new_data(self):
         while True:
             idx = self._data.find(self._MSG_TAIL)
@@ -99,10 +99,25 @@ class CmakeClientProtocol(asyncio.Protocol):
         elif msg_type == 'signal':
             # TODO: proper handling here
             print('Signal received: {}'.format(msg))
-        elif msg_type == 'reply' or msg_type == 'error':
-            cookie = msg['cookie']
-            future = self._outstanding_req.pop(cookie)[0]
+        elif msg_type == 'progress':
+            callback = self._outstanding_req[msg['cookie']][1]
+            self._invoke(callback, msg)
+        elif msg_type == 'message':
+            callback = self._outstanding_req[msg['cookie']][2]
+            self._invoke(callback, msg)
+        elif msg_type == 'reply':
+            future = self._outstanding_req.pop(msg['cookie'])[0]
             future.set_result(msg)
+        elif msg_type == 'error':
+            future = self._outstanding_req.pop(msg['cookie'])[0]
+            future.set_exception(ProtocolError(msg['errorMessage']))
+        else:
+            print('Warning: unknown message type: {}'.format(msg_type))    
+        
+    @staticmethod
+    def _invoke(cb, msg):
+        if cb is not None:
+            cb(msg)
         
     @classmethod
     def encode(cls, obj):
