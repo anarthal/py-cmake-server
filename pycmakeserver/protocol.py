@@ -1,6 +1,6 @@
 import asyncio
 import json
-from errors import ErrorReply, CommunicationError
+from .errors import ErrorReply, CommunicationError
 
 class CmakeClientProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'

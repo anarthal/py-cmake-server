@@ -1,6 +1,6 @@
 
 import asyncio
-import client
+from pycmakeserver import CmakeClient
 from pprint import pprint
 from os import path
 
@@ -15,7 +15,7 @@ def progress_cb(msg):
 # Note: coroutine
 async def async_main(loop):
     # Create a cmake client
-    cli = client.CmakeClient(loop)
+    cli = CmakeClient(loop)
     
     # Connect to cmake server
     await cli.connect(
@@ -31,7 +31,7 @@ async def async_main(loop):
         pprint(await cli.global_settings())
         
         # Set one of the above settings; this one will trigger a more verbose cmake build
-        await cli.set_global_settings({'debugOutput': True})
+        #await cli.set_global_settings({'debugOutput': True})
     
         # Start the configuration process; callbacks will be called
         # to report the state of the configuration process

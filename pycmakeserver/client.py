@@ -1,5 +1,5 @@
 
-import protocol
+from pycmakeserver import protocol
 
 class CmakeClient(object):
     def __init__(self, loop, on_signal=None):

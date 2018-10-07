@@ -22,7 +22,7 @@ This will start cmake in server mode listening in the /tmp/pipe Unix socket. Not
 
 In another terminal, ```cd``` inside py-cmake-client project, and run the demo:
 ```shell
-python3 main.py
+python3 demo.py
 ```
 
 This will cause Cmake to parse and display information about the C++ project inside the demo/ directory. Build files will be stored in /tmp/build. The following information will be displayed:
