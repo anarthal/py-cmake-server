@@ -15,16 +15,17 @@ def progress_cb(msg):
 # Note: coroutine
 async def async_main(loop):
     # Create a cmake client
-    cli = CmakeClient(loop)
-    
-    # Connect to cmake server
-    await cli.connect(
-        '/tmp/pipe', # The pipe where cmake is waiting; should be the value passed to --pipe
+    cli = CmakeClient(
+        loop,
         path.abspath('demo'), # Absolute path to the project (where the root CMakeLists.txt is)
         '/tmp/build', # Build directory
         'Unix Makefiles', # The cmake generator
         lambda msg: pprint(msg) # Will be called on cmake signals (ej. if a file changes)
     )
+    
+    # Connect to cmake server
+    # Pass in the pipe where cmake is waiting; should be the value passed to --pipe
+    await cli.connect('/tmp/pipe')
     
     try:
         # Get settings like the cmake version, the available generators...
