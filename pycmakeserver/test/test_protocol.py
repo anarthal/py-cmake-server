@@ -1,5 +1,6 @@
 from unittest import TestCase, mock
 from pycmakeserver.protocol import CmakeProtocol
+import json
 
 class CmakeProtocolTest(TestCase):
     def setUp(self):
@@ -8,6 +9,8 @@ class CmakeProtocolTest(TestCase):
         self.hello = b'''\n[== "CMake Server" ==[\n
             { "type": "hello" }
             \n]== "CMake Server" ==]\n'''
+        self.msg_head = b'\n[== "CMake Server" ==[\n'
+        self.msg_tail = b'\n]== "CMake Server" ==]\n'
         
     def error_recovery_test(self, data_bad):
         ''' Sends a bad message, then a good one, and asserts for recovery '''
@@ -15,7 +18,7 @@ class CmakeProtocolTest(TestCase):
         self.proto.data_received(self.hello)
         self.handler.handle.assert_called_once_with({'type': 'hello'})
     
-    # coonnection_lost
+    # connection_lost
     def test_connection_lost_calls_handler_connection_lost(self):
         err = Exception('myerror')
         self.proto.connection_lost(err)
@@ -98,5 +101,22 @@ class CmakeProtocolTest(TestCase):
             \n]== "CMake Server" ==]\n'''
         self.error_recovery_test(data_bad)
     
-    # write => writes prefix, suffix, serializes, writes to transport
-    # close => Calls transport close
+    # write
+    def test_write_writes_prefix_suffix_serializes_writes_to_transport(self):
+        transport = mock.Mock(['write'])
+        self.proto.connection_made(transport)
+        self.proto.write({'type': 'hello'})
+        transport.write.assert_called_once()
+        raw_msg = transport.write.call_args[0][0]
+        self.assertTrue(raw_msg.startswith(self.msg_head))
+        self.assertTrue(raw_msg.endswith(self.msg_tail))
+        msg = json.loads(raw_msg[len(self.msg_head):-len(self.msg_tail)])
+        self.assertEqual(msg, {'type': 'hello'})
+        
+    def test_write_non_ascii_writes_serializes_writes_to_transport(self):
+        transport = mock.Mock(['write'])
+        self.proto.connection_made(transport)
+        self.proto.write({'type': 'héllo'})
+        raw_msg = transport.write.call_args[0][0]
+        msg = json.loads(raw_msg[len(self.msg_head):-len(self.msg_tail)])
+        self.assertEqual(msg, {'type': 'héllo'})
