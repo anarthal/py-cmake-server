@@ -1,6 +1,9 @@
 import asyncio
 import json
 
+class InvalidMessageHeadError(Exception):
+    pass
+
 class CmakeProtocol(asyncio.Protocol):
     _MSG_HEAD = b'\n[== "CMake Server" ==[\n'
     _MSG_TAIL = b'\n]== "CMake Server" ==]\n'
@@ -24,7 +27,12 @@ class CmakeProtocol(asyncio.Protocol):
         asyncio.Protocol.data_received(self, data)
         print('RX << {}'.format(data))
         self._buffer += data
-        self._process_new_data()
+        try:
+            self._process_new_data()
+        except (json.JSONDecodeError, InvalidMessageHeadError) as err:
+            print('WARNING: error while processing data, discarding fragment')
+            print('{}: {}'.format(type(err).__name__, err))
+            self._buffer = b''
         
     def write(self, msg):
         tx = self._MSG_HEAD + json.dumps(msg).encode('utf_8') + self._MSG_TAIL
@@ -36,6 +44,10 @@ class CmakeProtocol(asyncio.Protocol):
         
     def _process_new_data(self):
         while True:
+            if len(self._buffer) < len(self._MSG_HEAD):
+                return
+            if not self._buffer.startswith(self._MSG_HEAD):
+                raise InvalidMessageHeadError(str(self._buffer[:len(self._MSG_HEAD)]))
             idx = self._buffer.find(self._MSG_TAIL)
             if idx == -1:
                 return

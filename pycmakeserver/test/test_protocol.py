@@ -54,12 +54,79 @@ class CmakeProtocolTest(TestCase):
             mock.call({'type': 'signal'})
         ]
         self.assertEqual(self.handler.handle.mock_calls, expected_calls)
+        
+    def test_data_received_non_ascii_values_calls_handle(self):
+        data = b'''\n[== "CMake Server" ==[\n
+            { "type": "\xc3\xa1" }
+            \n]== "CMake Server" ==]\n''' # \xc3\xa1 = a accute
+        self.proto.data_received(data)
+        self.handler.handle.assert_called_once_with({'type': 'á'})
 
+    # data_received error conditions
+    def test_data_received_message_does_not_start_with_adequate_prefix_shorter_discards(self):
+        data_bad = b'''\n[== "Bad" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        data_ok = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data_bad)
+        self.proto.data_received(data_ok)
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
+        
+    def test_data_received_message_does_not_start_with_adequate_prefix_equal_length_discards(self):
+        data_bad = b'''\n[== "CMake Serve_" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        data_ok = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data_bad)
+        self.proto.data_received(data_ok)
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
+        
+    def test_data_received_message_does_not_start_with_adequate_prefix_longer_discards(self):
+        data_bad = b'''\n[== "Invalid Very Long Message Head" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        data_ok = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data_bad)
+        self.proto.data_received(data_ok)
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
+        
+    def test_data_received_incomplete_prefix_does_not_discard(self):
+        # Bad prefix recovery should not discard good but incomplete prefixes
+        data = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data[:5]) # Prefix is OK but incomplete
+        self.proto.data_received(data[5:])
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
+        
+    def test_data_received_invalid_utf8_discards(self):
+        data_bad = b'''\n[== "CMake Server" ==[\n
+            { "type": "\9cinvalid" }
+            \n]== "CMake Server" ==]\n'''
+        data_ok = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data_bad)
+        self.proto.data_received(data_ok)
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
+        
+    def test_data_received_invalid_json_discards(self):
+        data_bad = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" ]
+            \n]== "CMake Server" ==]\n'''
+        data_ok = b'''\n[== "CMake Server" ==[\n
+            { "type": "hello" }
+            \n]== "CMake Server" ==]\n'''
+        self.proto.data_received(data_bad)
+        self.proto.data_received(data_ok)
+        self.handler.handle.assert_called_once_with({'type': 'hello'})
     
     # data received
-    #   Bad message (does not start with adequate prefix)
-    #   Bad message (error decoding UTF8)
-    #   Bad message (cannot find termination in a reasonable message size)
-    #   Bad message (not a JSON)
     # write => writes prefix, suffix, serializes, writes to transport
     # close => Calls transport close
